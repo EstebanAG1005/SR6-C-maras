@@ -130,129 +130,292 @@ WHITE = color(1,1,1)
 
 class Render(object):
  
-  # Se inicializan valores
-  def __init__(self, width, height):
-        self.current_color = WHITE
-        self.clear_color = BLACK
-        self.glCreateWindow(width, height)
-        self.active_texture = None
-  
-  # Se crea el margen con el cual se va a trabajar
-  def glCreateWindow(self, width, height):
-      self.width = width
-      self.height = height
-      self.glClear()
-      self.glViewport(0,0, width, height)
+ def __init__(self, width, height):
+        self.width = width
+        self.height = height
+        self.vertexColor = color(255,255,255)
+        self.clearColor = color(91,204,57)
+        self.clear()
+        #vertexBuffer
+        #inicializamos las variables necesarias
+        self.light = V3(0,0,1)
+        self.activeTexture = None
+        self.VertexArray = []
 
-  # Se crea el Viewport
-  def glViewport(self, x, y, width, height):
-      self.VP_IX = x
-      self.VP_IY = y
-      self.VP_W = width
-      self.VP_H = height
-      self.VP_FX = x + width
-      self.VP_FY = x + height
-
-  # Se definen colores con los cuales trabajar
-  def glClear(self):
-      self.framebuffer = [
-      [self.clear_color for x in range(self.width)] 
-      for y in range(self.height)
-      ]
-      self.zbuffer = [
-        [-float('inf') for x in range(self.width)]
+    #Funcion para limpiar
+ def clear(self):
+    self.framebuffer = [
+        [color(0,0,0) for x in range(self.width)]
         for y in range(self.height)
-      ]
+    ]
+    self.zbuffer = [[-float('inf') for x in range(self.width)] for y in range(self.height)]
 
-  # Se revisa el vertex dentro del viewport en el cual vamos a trabajar
-  def glVertextInViewport(self, x,y):
-      return (x >= self.VP_IX and
-          x <= self.VP_FX) and (
-          y >= self.VP_IY and
-          y <= self.VP_FY)
+#Funcion para escribir
+ def write(self, filename="out.bmp"):
+    f = open(filename, 'bw')
+    # File header (14 bytes)
+    f.write(char('B'))
+    f.write(char('M'))
+    f.write(dword(14 + 40 + self.width * self.height * 3))
+    f.write(dword(0))
+    f.write(dword(14 + 40))
+    # Image header (40 bytes)
+    f.write(dword(40))
+    f.write(dword(self.width))
+    f.write(dword(self.height))
+    f.write(word(1))
+    f.write(word(24))
+    f.write(dword(0))
+    f.write(dword(self.width * self.height * 3))
+    f.write(dword(0))
+    f.write(dword(0))
+    f.write(dword(0))
+    f.write(dword(0))
+    for x in range(self.height):
+        for y in range(self.width):
+            f.write(self.framebuffer[x][y])
+    f.close()
 
-  # Se definen los colores del BMP para poderlos incluir en el OBJ
-  def glClearColor(self, r, g, b):
-      array_colors = FloatRGB([r,g,b])
-      self.clear_color = color(array_colors[0], array_colors[1], array_colors[2])
+#Funcion que crea la ventana
+ def glCreateWindow(self, width, height):
+    self.width = width
+    self.height = height
+    self.clear()
 
-  # Se genera el vertex
-  def glVertex(self, x, y, color = None):
-      pixelX = ( x + 1) * (self.vpWidth  / 2 ) + self.vpX
-      pixelY = ( y + 1) * (self.vpHeight / 2 ) + self.vpY
-      try:
-          self.framebuffer[round(pixelY)][round(pixelX)] = color or self.current_color
-      except:
-          pass
-  
-  # Se definen puntos dentro del Margen establecido
-  def glPoint(self, x, y, color = None):
-      if x >= self.width or x < 0 or y >= self.height or y < 0:
-          return
-      try:
-          self.framebuffer[y][x] = color or self.current_color
-      except:
-          pass
-  
-  # Se definen colores a utilizar
-  def glColor(self, r, g, b):
-      array_colors = FloatRGB([r,g,b])
-      self.clear_color = color(array_colors[0], array_colors[1], array_colors[2])
+ def glViewPort(self, x, y, width, height):
+    self.ViewPort_X = x
+    self.ViewPort_Y = y
+    self.ViewPort_H = height
+    self.ViewPort_W = width
 
-  def point(self, x, y, color = None):
-     try:
-       self.framebuffer[y][x] = color or self.current_color
-     except:
-       pass
-      
-  # Se Genera archivo .BMP
-  def glFinish(self, filename):
-      f = open(filename, 'bw')
+ def glVertex(self, x, y):
+    self.PortX = int((x+1) * self.ViewPort_W * (1/2) + self.ViewPort_X)
+    self.PortY = int((y+1) * self.ViewPort_H * (1/2) + self.ViewPort_Y)
+    self.point(self.PortX, self.PortY)
 
-      #file header
-      f.write(char('B'))
-      f.write(char('M'))
-      f.write(dword(14 + 40 + self.width * self.height * 3))
-      f.write(dword(0))
-      f.write(dword(14 + 40))
+#Funcion que cambia el color con que funcionara glClear
+ def glClearColor(self, r, g, b):
+    self.rc = round(255*r)
+    self.gc = round(255*g)
+    self.bc = round(255*b)
+    self.clearColor = color(self.rc, self.gc, self.bc)
 
-      #image header
-      f.write(dword(40))
-      f.write(dword(self.width))
-      f.write(dword(self.height))
-      f.write(word(1))
-      f.write(word(24))
-      f.write(dword(0))
-      f.write(dword(self.width * self.height * 3))
-      f.write(dword(0))
-      f.write(dword(0))
-      f.write(dword(0))
-      f.write(dword(0))
-      
-      # pixel data
+#Funcion para mostrar el archivo
+ def archivo(self, filename='out.bmp'):
+    self.write(filename)
 
-      for x in range(self.height):
-          for y in range(self.width):
-              f.write(self.framebuffer[x][y])
+#Funcion para el color
+ def set_color(self, color):
+    self.vertexColor =color
 
-      f.close()
+ def glColor(self, r, g, b):
+    self.rv = round(255*r)
+    self.gv = round(255*g)
+    self.bv = round(255*b)
+    self.vertexColor = color(self.rv, self.gv, self.bv)
 
-  # Funcion de Transformacion 
-  def transform(self, vertex, translate=(0,0,0), scale=(1,1,1)):
-    t1 = round((vertex[0] + translate[0]) * scale[0])
-    t2 = round((vertex[1] + translate[1]) * scale[1])
-    t3 = round((vertex[2] + translate[2]) * scale[2])
+#Funcion para el puntos
+ def point(self, x, y, color=None):
+    self.framebuffer[y][x] = color or self.vertexColor
 
-    return V3(t1,t2,t3)
+#Funcion para crear lineas
+ def glLine(self, x1, y1, x2, y2):
+    #------ y = mx + b ------#
+    dx = abs(x2-x1)
+    dy = abs(y2-y1)
+    #Condicion
+    st = dy>dx
+    #Condicion de valores 0 en dx
+    if dx == 0:
+        for y in range(y1, y2+1):
+            self.point(x1, y)
+    #Condcicion para completar la lineas
+    if(st):
+        x1,y1 = y1,x1
+        x2,y2 = y2,x2
+    if(x1>x2):
+        x1,x2 = x2,x1
+        y1,y2 = y2,y1
+    #Valor en x e y
+    dx = abs(x2-x1)
+    dy = abs(y2-y1)
+    llenar = 0
+    limite = dx
+    y = y1
+    #Pendiente
+    #m = dy/dx
+    for x in range(x1,(x2+1)):
+        if(st):
+            self.point(y,x)
+        else:
+            self.point(x,y)
+        llenar += dy * 2
+        if llenar >= limite:
+            y += 1 if y1 < y2 else -1
+            limite += 2*dx
+
+#Funcion para dibujar triangulos
+ def triangle(self, A, B, C, color=None, texture=None, shader=None, normals = None, texture_coords=(), intensity=1):
+    bbox_min, bbox_max = bbox(A, B, C)
+    #Llenamos los poligonos con el siguiente Ciclo
+    for x in range(bbox_min.x, bbox_max.x + 1):
+        for y in range(bbox_min.y, bbox_max.y + 1):
+            #Coordenads barycentricas
+            w, v, u = baricentricas(A, B, C, V2(x,y))
+            #Condicion para evitar numeros negativos
+            if (w<0) or (v<0) or (u<0):
+                continue
+            if color:
+                self.vertexColor = color
+            #Condicon para los datos de la textura
+            if texture:
+                tA, tB, tC = texture_coords
+                tx = tA.x * w + tB.x * v + tC.x * u
+                ty = tA.y * w + tB.y * v + tC.y * u
+                #Mandamos los colores
+                color = texture.get_color(tx, ty, intensity)
+            # si encuentra un shader
+            elif shader:
+                color = shader(self, bary(w,v,u), vnormals=normals, bcolor=bcolor)
+            #Valores para la coordenada z
+            z = A.z * w + B.z * v + C.z * u
+            #Condicion para evitar numeros negativos
+            if (x<0) or (y<0):
+                continue
+            if x < len(self.zbuffer) and y < len(self.zbuffer[x]) and z > self.zbuffer[x][y]:
+                self.point(x, y, color)
+                self.zbuffer[x][y] = z
 
 
-  def load(self, filename, translate=(0, 0, 0), scale=(1, 1, 1),rotate=(0,0,0),texture=None):
+ def loadModelMatrix(self, translate=(0, 0, 0), scale=(1, 1, 1), rotate=(0, 0, 0)):
+    #Mandamos los datos
+    translate = V3(*translate)
+    scale = V3(*scale)
+    rotate = V3(*rotate)
+    #Matriz de translacion
+    translatenMatrix = [
+        [1, 0, 0, translate.x],
+        [0, 1, 0, translate.y],
+        [0, 0, 1, translate.z],
+        [0, 0, 0,       1    ],
+    ]
+    #Matriz de escalar
+    scaleMatrix = [
+        [scale.x, 0, 0, 0],
+        [0, scale.y, 0, 0],
+        [0, 0, scale.z, 0],
+        [0, 0,    0   , 1],
+    ]
+    #Matrices de rotacion tanto en x, y e z
+    #X
+    rotateMatriz_X = [
+        [1,       0      ,        0      , 0],
+        [0, cos(rotate.x), -sin(rotate.x), 0],
+        [0, sin(rotate.x),  cos(rotate.x), 0],
+        [0,       0      ,        0      , 1]
+    ]
+    #Y
+    rotateMatriz_Y = [
+            [ cos(rotate.y), 0,  sin(rotate.y), 0],
+            [      0       , 1,        0      , 0],
+            [-sin(rotate.y), 0,  cos(rotate.y), 0],
+            [      0       , 0,        0      , 1]
+    ]
+    #Z
+    rotateMatriz_Z = [
+        [cos(rotate.z), -sin(rotate.z), 0, 0],
+        [sin(rotate.z),  cos(rotate.z), 0, 0],
+        [      0      ,        0      , 1, 0],
+        [      0      ,        0      , 0, 1],
+    ]
+    #Matriz general de rotacion
+    rotateMatriz = multiplicarMatrices(multiplicarMatrices(rotateMatriz_X, rotateMatriz_Y), rotateMatriz_Z)
+    #Matriz general que contiene translate, scale, rotate
+    self.Model = multiplicarMatrices(multiplicarMatrices(translatenMatrix, rotateMatriz), scaleMatrix)
 
-      self.loadModelMatrix(translate, scale, rotate)
-      objetos = Obj(filename)
-      light = V3(0,0,1)
-      #Ciclo para recorrer las carras
-      for face in objetos.faces:
+#Funcion para la viewMatrix
+ def loadViewMatrix(self, x, y, z, center):
+    M = [
+        [x.x, x.y, x.z, 0],
+        [y.x, y.y, y.z, 0],
+        [z.x, z.y, z.z, 0],
+        [ 0 ,  0 ,  0 , 1]
+    ]
+    O = [
+        [1, 0, 0, -center.x],
+        [0, 1, 0, -center.y],
+        [0, 0, 1, -center.z],
+        [0, 0, 0,     1    ]
+    ]
+    #Multiplicamos las matrices para generar una sola
+    self.View = multiplicarMatrices(M, O)
+
+#Funcion que contiene la matriz de projeccion
+ def loadProjectionMatrix(self, coeff):
+    self.Projection = [
+        [1, 0,   0  , 0],
+        [0, 1,   0  , 0],
+        [0, 0,   1  , 0],
+        [0, 0, coeff, 1]
+    ]
+
+#Funcion que tiene la matriz de view port
+ def loadViewportMatrix(self, x = 0, y = 0):
+    self.Viewport = [
+        [(self.width*0.5),         0        ,  0  ,  ( x+self.width*0.5) ],
+        [       0        , (self.height*0.5),  0  ,  (y+self.height*0.5) ],
+        [       0        ,         0        , 128 ,          128         ],
+        [       0        ,         0        ,  0  ,          1           ]
+    ]
+
+#Funcion para encontrar la transformacion
+ def trans(self, vertex, translate=(0,0,0), scale=(1,1,1)):
+    return V3(
+    round((vertex[0] + translate[0]) * scale[0]),
+    round((vertex[1] + translate[1]) * scale[1]),
+    round((vertex[2] + translate[2]) * scale[2])
+    )
+
+#Funcion que tranforma las MATRICES
+ def transform(self, vector):
+    nuevoVector = [[vector.x], [vector.y], [vector.z], [1]]
+    #Multiplicamos las diferentes matrices resultantes
+    modelMultix = multiplicarMatrices(self.Viewport, self.Projection)
+    viewMultix = multiplicarMatrices(modelMultix, self.View)
+    vpMultix = multiplicarMatrices(viewMultix, self.Model)
+    #Vector de transformacion
+    vectores = multiplicarMatrices(vpMultix, nuevoVector)
+    #transformacion
+    transformVector = [
+        round(vectores[0][0]/vectores[3][0]),
+        round(vectores[1][0]/vectores[3][0]),
+        round(vectores[2][0]/vectores[3][0])
+    ]
+    #print(V3(*transformVector))
+    #retornamos los Valores
+    return V3(*transformVector)
+
+#Funcion para la vista
+ def lookAt(self, eye, center, up):
+    z = norm(sub(eye, center))
+    x = norm(cross(up, z))
+    y = norm(cross(z, x))
+    self.loadViewMatrix(x, y, z, center)
+    self.loadProjectionMatrix( -1 / length(sub(eye, center)))
+    self.loadViewportMatrix()
+
+
+ def load(self, filename, translate=(0, 0, 0), scale=(1, 1, 1), rotate=(0,0,0), texture=None):
+    self.loadModelMatrix(translate, scale, rotate)
+    objetos = Obj(filename)
+    objetos.read()
+    self.light = V3(0,0,1)
+    #Ciclo para recorrer las carras
+    for face in objetos.faces:
+        vcount = len(face)
+        #Revisamos cada car
+        #Ciclo para recorrer las carras
+        for face in objetos.faces:
           vcount = len(face)
           if vcount == 3:
             f1 = face[0][0] - 1
@@ -322,147 +485,3 @@ class Render(object):
                     continue
                 self.triangle(A, B, C, color(grey, grey, grey))
                 self.triangle(A, C, D, color(grey, grey, grey))  
-            
-  def triangle(self, A, B, C, color=None, texture=None, texture_coords=(), intensity=1):
-    bbox_min, bbox_max = bbox(A, B, C)
-    for x in range(bbox_min.x, bbox_max.x + 1):
-        for y in range(bbox_min.y, bbox_max.y + 1):
-            # coordenadas baricentricas
-            w, v, u = barycentric(A, B, C, V2(x,y))
-            # condicion para evitar los numeros negativos
-            if (w<0) or (v<0) or (u<0):
-                continue
-            if texture:
-                #valores para la coordenadas, que esten el el obj
-                tA, tB, tC = texture_coords
-                tx = tA.x * w + tB.x * v + tC.x * u
-                ty = tA.y * w + tB.y * v + tC.y * u
-                color = texture.intensity(tx, ty, intensity)
-            # valores de z
-            z = A.z * w + B.z * v + C.z * u
-            if (x<0) or (y<0):
-                continue
-            if x < len(self.zbuffer) and y < len(self.zbuffer[x]) and z > self.zbuffer[x][y]:
-                self.point(x, y, color)
-                self.zbuffer[x][y] = z
-
-# ------------------------------------ Codigo para transformar la imagen -------------------------------------------------
-
-
-  def loadModelMatrix(self, translate=(0, 0, 0), scale=(1, 1, 1), rotate=(0, 0, 0)):
-        #Mandamos los datos
-        translate = V3(*translate)
-        scale = V3(*scale)
-        rotate = V3(*rotate)
-        #Matriz de translacion
-        translatenMatrix = [
-            [1, 0, 0, translate.x],
-            [0, 1, 0, translate.y],
-            [0, 0, 1, translate.z],
-            [0, 0, 0,       1    ],
-        ]
-        #Matriz de escalar
-        scaleMatrix = [
-            [scale.x, 0, 0, 0],
-            [0, scale.y, 0, 0],
-            [0, 0, scale.z, 0],
-            [0, 0,    0   , 1],
-        ]
-        #Matrices de rotacion tanto en x, y e z
-        #X
-        rotateMatriz_X = [
-            [1,       0      ,        0      , 0],
-            [0, cos(rotate.x), -sin(rotate.x), 0],
-            [0, sin(rotate.x),  cos(rotate.x), 0],
-            [0,       0      ,        0      , 1]
-        ]
-        #Y
-        rotateMatriz_Y = [
-             [ cos(rotate.y), 0,  sin(rotate.y), 0],
-             [      0       , 1,        0      , 0],
-             [-sin(rotate.y), 0,  cos(rotate.y), 0],
-             [      0       , 0,        0      , 1]
-        ]
-        #Z
-        rotateMatriz_Z = [
-            [cos(rotate.z), -sin(rotate.z), 0, 0],
-            [sin(rotate.z),  cos(rotate.z), 0, 0],
-            [      0      ,        0      , 1, 0],
-            [      0      ,        0      , 0, 1],
-        ]
-        #Matriz general de rotacion
-        rotateMatriz = multiplicarMatrices(multiplicarMatrices(rotateMatriz_X, rotateMatriz_Y), rotateMatriz_Z)
-        #Matriz general que contiene translate, scale, rotate
-        self.Model = multiplicarMatrices(multiplicarMatrices(translatenMatrix, rotateMatriz), scaleMatrix)
-
-    #Funcion para la viewMatrix
-  def loadViewMatrix(self, x, y, z, center):
-        M = [
-            [x.x, x.y, x.z, 0],
-            [y.x, y.y, y.z, 0],
-            [z.x, z.y, z.z, 0],
-            [ 0 ,  0 ,  0 , 1]
-        ]
-        O = [
-            [1, 0, 0, -center.x],
-            [0, 1, 0, -center.y],
-            [0, 0, 1, -center.z],
-            [0, 0, 0,     1    ]
-        ]
-        #Multiplicamos las matrices para generar una sola
-        self.View = multiplicarMatrices(M, O)
-
-    #Funcion que contiene la matriz de projeccion
-  def loadProjectionMatrix(self, coeff):
-        self.Projection = [
-            [1, 0,   0  , 0],
-            [0, 1,   0  , 0],
-            [0, 0,   1  , 0],
-            [0, 0, coeff, 1]
-        ]
-
-    #Funcion que tiene la matriz de view port
-  def loadViewportMatrix(self, x = 0, y = 0):
-        self.Viewport = [
-            [(self.width*0.5),         0        ,  0  ,  ( x+self.width*0.5) ],
-            [       0        , (self.height*0.5),  0  ,  (y+self.height*0.5) ],
-            [       0        ,         0        , 128 ,          128         ],
-            [       0        ,         0        ,  0  ,          1           ]
-        ]
-
-    #Funcion para encontrar la transformacion
-  def trans(self, vertex, translate=(0,0,0), scale=(1,1,1)):
-        return V3(
-        round((vertex[0] + translate[0]) * scale[0]),
-        round((vertex[1] + translate[1]) * scale[1]),
-        round((vertex[2] + translate[2]) * scale[2])
-        )
-
-    #Funcion que tranforma las MATRICES
-  def transform(self, vector):
-        nuevoVector = [[vector.x], [vector.y], [vector.z], [1]]
-        #Multiplicamos las diferentes matrices resultantes
-        modelMultix = multiplicarMatrices(self.Viewport, self.Projection)
-        viewMultix = multiplicarMatrices(modelMultix, self.View)
-        vpMultix = multiplicarMatrices(viewMultix, self.Model)
-        #Vector de transformacion
-        vectores = multiplicarMatrices(vpMultix, nuevoVector)
-        #transformacion
-        transformVector = [
-            round(vectores[0][0]/vectores[3][0]),
-            round(vectores[1][0]/vectores[3][0]),
-            round(vectores[2][0]/vectores[3][0])
-        ]
-        #print(V3(*transformVector))
-        #retornamos los Valores
-        return V3(*transformVector)
-
-    #Funcion para la vista
-  def lookAt(self, eye, center, up):
-        z = norm(sub(eye, center))
-        x = norm(cross(up, z))
-        y = norm(cross(z, x))
-        self.loadViewMatrix(x, y, z, center)
-        self.loadProjectionMatrix( -1 / length(sub(eye, center)))
-        self.loadViewportMatrix()
-
