@@ -1,7 +1,6 @@
-# Universidad del Valle de Guatemala
-# Grafica por Computadora
-# Nombre: Marcos Gutierrez
-# Carne: 17909
+# SR6-Camaras
+# Graficas por computadora 
+# Esteban Aldana Guerra 20591
 
 from gl import *
 import random
