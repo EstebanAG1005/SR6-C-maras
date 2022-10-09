@@ -475,14 +475,14 @@ class Render(object):
                 f4 = face[3][0] - 1   
 
                 vertices = [
-                    self.transform(objetos.vertices[f1]),
-                    self.transform(objetos.vertices[f2]),
-                    self.transform(objetos.vertices[f3]),
-                    self.transform(objetos.vertices[f4])
+                    self.transform(V3(*objetos.vertices[f1])),
+                    self.transform(V3(*objetos.vertices[f2])),
+                    self.transform(V3(*objetos.vertices[f3])),
+                    self.transform(V3(*objetos.vertices[f4]))
                 ]
 
                 normal = norm(cross(sub(vertices[0], vertices[1]), sub(vertices[1], vertices[2])))
-                intensity = dot(normal, light)
+                intensity = dot(normal, self.light)
                 grey = round(255 * intensity)
 
                 A, B, C, D = vertices 
